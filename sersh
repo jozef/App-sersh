@@ -171,9 +171,9 @@ sersh - serial port shell
 
         --baudrate [Int]            - dft.: 19200
         --parity [none|odd|even]    - dft.: none
-        --databits [5,6,7,8]        - dft: 8
-        --stopbits [1,2]            - dft: 1
-        --handshake [none,rts,xoff] - dft: none
+        --databits [5,6,7,8]        - dft.: 8
+        --stopbits [1,2]            - dft.: 1
+        --handshake [none,rts,xoff] - dft.: none
 
 =head1 DESCRIPTION
 
@@ -182,6 +182,10 @@ Serial port shell with Gnu readline support for command editing and history.
 Launch with serial device as argument and then write commands that will
 be sent over serial port after you hit enter. All input from serial
 port is printed on the screen as it arrives.
+
+=head1 LINKS
+
+L<https://blog.kutej.net/2020/10/App-sersh> - more description + video
 
 =head1 AUTHOR
 
