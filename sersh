@@ -28,6 +28,7 @@ sub main {
     my $handshake = 'none';
     my $newln_char = "\n";
     my $use_cr_as_nl = 0;
+    my $wait_response = 0;
     GetOptions(
         'baudrate|b=s'  => \$baudrate,
         'parity|p=s'    => \$parity,
@@ -35,6 +36,7 @@ sub main {
         'stopbits|s=s'  => \$stopbits,
         'handshake|s=s' => \$handshake,
         'cr'            => \$use_cr_as_nl,
+        'wait'          => \$wait_response,
         'help|h'        => \$help,
     ) or pod2usage(1);
     pod2usage(0) if $help;
@@ -91,6 +93,9 @@ sub main {
         },
     );
 
+    my @send_lines;
+    my $response_pending;
+
     # print data from serial
     $serial_ae->on_read(
         sub {
@@ -104,6 +109,13 @@ sub main {
                 my (undef, $line) = @_;
                 $line =~ s/[\r\n]+$//;
                 AnyEvent::ReadLine::Gnu->print($line."\n");
+
+                if (@send_lines) {
+                    $serial_ae->push_write(shift(@send_lines) . $newln_char);
+                }
+                else {
+                    $response_pending = 0;
+                }
             });
         }
     );
@@ -121,7 +133,13 @@ sub main {
             }
 
             # send line to serial
-            $serial_ae->push_write($line . $newln_char);
+            if ($wait_response and $response_pending) {
+                push(@send_lines, $line);
+            }
+            else {
+                $response_pending = 1;
+                $serial_ae->push_write($line . $newln_char);
+            }
 
             # append line to history file
             use AnyEvent::IO qw(aio_open aio_write :flags);
@@ -187,6 +205,8 @@ sersh - serial port shell
         --databits [5,6,7,8]        - dft.: 8
         --stopbits [1,2]            - dft.: 1
         --handshake [none,rts,xoff] - dft.: none
+        --cr                        - use \r as new-line
+        --wait                      - wait for one line of response before sending next line
 
 =head1 DESCRIPTION
 
