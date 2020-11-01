@@ -95,8 +95,16 @@ sub main {
     $serial_ae->on_read(
         sub {
             my ($hdl) = @_;
-            AnyEvent::ReadLine::Gnu->print($hdl->rbuf);
-            $hdl->rbuf = '';
+
+            # per char display doesn't work
+            #~ print $hdl->rbuf;
+            #~ $hdl->rbuf = '';
+
+            $hdl->push_read(line => sub {
+                my (undef, $line) = @_;
+                $line =~ s/[\r\n]+$//;
+                AnyEvent::ReadLine::Gnu->print($line."\n");
+            });
         }
     );
 
