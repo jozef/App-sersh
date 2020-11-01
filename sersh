@@ -58,7 +58,7 @@ sub main {
         $cfg_dir->mkpath or die 'failed to create "' . $cfg_dir . '": $!';
     }
     my $hist_file      = $cfg_dir->file('.sersh_history');
-    my @histfile_lines = $hist_file->slurp();
+    my @histfile_lines = (-e $hist_file ? $hist_file->slurp() : ());
     if (@histfile_lines > $HISTSIZE_MAX) {
         splice(@histfile_lines, 0, (@histfile_lines - $HISTSIZE_MAX));
         $hist_file->spew(\@histfile_lines);
