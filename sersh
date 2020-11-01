@@ -26,15 +26,20 @@ sub main {
     my $databits  = 8;
     my $stopbits  = 1;
     my $handshake = 'none';
+    my $newln_char = "\n";
+    my $use_cr_as_nl = 0;
     GetOptions(
         'baudrate|b=s'  => \$baudrate,
         'parity|p=s'    => \$parity,
         'databits|d=s'  => \$databits,
         'stopbits|s=s'  => \$stopbits,
         'handshake|s=s' => \$handshake,
+        'cr'            => \$use_cr_as_nl,
         'help|h'        => \$help,
     ) or pod2usage(1);
     pod2usage(0) if $help;
+    $newln_char = "\r"
+        if $use_cr_as_nl;
 
     if (@ARGV) {
         pod2usage('too many arguments') if @ARGV > 1;
@@ -108,7 +113,7 @@ sub main {
             }
 
             # send line to serial
-            $serial_ae->push_write($line . "\n");
+            $serial_ae->push_write($line . $newln_char);
 
             # append line to history file
             use AnyEvent::IO qw(aio_open aio_write :flags);
