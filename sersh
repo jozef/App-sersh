@@ -86,7 +86,8 @@ sub main {
         ],
         on_error => sub {
             my ($hdl, $fatal, $msg) = @_;
-            die $msg;
+            warn 'received error on '.$serial_fn."\n";
+            $run_cv->send;
         },
         on_eof => sub {
             $run_cv->send;
