@@ -12,7 +12,7 @@ use File::HomeDir;
 use Getopt::Long;
 use Pod::Usage;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 my $HISTSIZE_MAX = $ENV{HISTSIZE} // 1000;
 
@@ -29,6 +29,7 @@ sub main {
     my $newln_char = "\n";
     my $use_cr_as_nl = 0;
     my $wait_response = 0;
+    my $esc_char = undef;
     GetOptions(
         'baudrate|b=s'  => \$baudrate,
         'parity|p=s'    => \$parity,
@@ -37,9 +38,11 @@ sub main {
         'handshake|s=s' => \$handshake,
         'cr'            => \$use_cr_as_nl,
         'wait'          => \$wait_response,
+        'escape|e=s'    => \$esc_char,
         'help|h'        => \$help,
     ) or pod2usage(1);
-    pod2usage(0) if $help;
+    pod2usage({-verbose => 99, -sections => 'SYNOPSIS|DESCRIPTION'})
+        if $help;
     $newln_char = "\r"
         if $use_cr_as_nl;
 
@@ -96,6 +99,7 @@ sub main {
 
     my @send_lines;
     my $response_pending;
+    my $bg_cmd_timer;
 
     # print data from serial
     $serial_ae->on_read(
@@ -126,6 +130,11 @@ sub main {
         on_line => sub {
             my ($line) = @_;
 
+            if ($bg_cmd_timer) {
+                $bg_cmd_timer = undef;
+                AnyEvent::ReadLine::Gnu->print('terminating loop' . "\n");
+            }
+
             # EOF
             if (!defined($line)) {
                 AnyEvent::ReadLine::Gnu->print("\n");
@@ -134,7 +143,31 @@ sub main {
             }
 
             # send line to serial
-            if ($wait_response and $response_pending) {
+            if (defined($esc_char) && (index($line, $esc_char) == 0)) {
+                my ($cmd, $cmd_args) = split(/\s+/, $line, 2);
+                $cmd = substr($cmd, length($esc_char));
+                if ($cmd eq 'loop') {
+                    my ($delay, $term_lines_str) = split(/\s+/, $cmd_args, 2);
+                    my (@term_lines) = split(/\s*\\n\s*/, $term_lines_str);
+                    my $cur_line_idx = 0;
+                    $bg_cmd_timer = AnyEvent->timer(
+                        after    => 0,
+                        interval => $delay,
+                        cb       => sub {
+                            my $cur_line = $term_lines[$cur_line_idx++];
+                            $cur_line_idx = 0
+                                if $cur_line_idx >= @term_lines;
+                            AnyEvent::ReadLine::Gnu->print(
+                                $esc_char . $prompt_prefix . $cur_line . "\n");
+                            $serial_ae->push_write($cur_line . $newln_char);
+                        }
+                    );
+                }
+                else {
+                    AnyEvent::ReadLine::Gnu->print("unknown command\n");
+                }
+            }
+            elsif ($wait_response and $response_pending) {
                 push(@send_lines, $line);
             }
             else {
@@ -208,6 +241,7 @@ sersh - serial port shell
         --handshake [none,rts,xoff] - dft.: none
         --cr                        - use \r as new-line
         --wait                      - wait for one line of response before sending next line
+        --escape '~'                - set escape characters to issue special commands
 
 =head1 DESCRIPTION
 
@@ -216,6 +250,13 @@ Serial port shell with Gnu readline support for command editing and history.
 Launch with serial device as argument and then write commands that will
 be sent over serial port after you hit enter. All input from serial
 port is printed on the screen as it arrives.
+
+Current escape commands:
+
+    ~loop 30 M140 S65\nM140 S66
+
+Will transmit "M140 S65" + wait 30 seconds, then "M140 S66" + wait 30
+seconds in an infinite loop until next command is sent by user.
 
 =head1 LINKS
 

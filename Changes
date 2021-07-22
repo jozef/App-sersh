@@ -3,8 +3,9 @@ Revision history for App-sersh
 0.02
       - allow CR as newline with --cr
       - print whole/full lines only
-      - expect reposponse first before sending next command with --wait
+      - add expect reposponse first before sending next command with --wait
       - normal exit on serial error, like in case of usb cable unpluged
+      - add poor-man-quick-solution to send commands in an infinite loop
 
 0.01     7 October 2020
     * First version, released on an unsuspecting world.
